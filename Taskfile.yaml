@@ -1,0 +1,76 @@
+version: 3
+
+silent: true
+
+env:
+  CI_PROJECT_NAME: demo
+  CI_PROJECT_KEY: demo
+  CI_PROJECT_DOMAIN: example.com
+  CI_SERVICE_NAME: demo
+  CI_SERVICE_IMAGE_REPOSITORY_URL: docker.io/services
+  CI_SERVICE_URL_TYPE: 'path'
+
+tasks:
+  default:
+    desc: Service Tasks
+    cmds:
+      - |
+        source ./docker/scripts/utils.sh
+        print_info "Available tasks:"
+        print_info "docker:login          - Logging in to Docker Hub"
+        print_info "docker:login-ecr      - Docker Login to Amazon ECR"
+        print_info "docker:build-preview  - Preview Docker Build Environment"
+        print_info "docker:build          - Build Docker Image"
+        print_info "docker:build-push     - Build and Push Docker Images"
+        print_info "service:get-metadata  - Get Service Metadata for current environment (JSON)"
+
+  docker:login:
+    desc: Logging in to Docker Hub
+    requires:
+      vars: [DOCKER_HUB_USERNAME, DOCKER_HUB_PASSWORD]
+    cmds:
+      - echo "◈ Logging in to Docker Hub Registry"
+      - docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
+
+  docker:login-ecr:
+    desc: Docker Login to Amazon ECR
+    requires:
+      vars: [AWS_ECR_ACCOUNT_ID, AWS_ECR_REGION]
+    cmds:
+      - echo "◈ Logging in to Amazon ECR"
+      - |
+        env \
+        aws ecr get-login-password --region $AWS_ECR_REGION | \
+        docker login --username AWS --password-stdin $AWS_ECR_ACCOUNT_ID.dkr.ecr.$AWS_ECR_REGION.amazonaws.com
+
+  docker:build-preview:
+    desc: Preview Docker Build Environment
+    # required:
+    #   vars: [CI_SERVICE_IMAGE_REPOSITORY_URL]
+    cmds:
+      - echo "◈ Preview Docker Build Environment"
+      - ./docker/scripts/cicd-entrypoint.sh
+
+  docker:build:
+    desc: Build Docker Images
+    # required:
+    #   vars: [CI_SERVICE_IMAGE_REPOSITORY_URL]
+    cmds:
+      - echo "◈ Building Docker Image"
+      - |
+        # IMPORTANT: We have to source scripts in a non-interactive sub-shell to avoid "unbound variable" errors
+        bash -c "source ./docker/scripts/cicd-entrypoint.sh && ./docker/scripts/docker-build.sh"
+  
+  docker:build-push:
+    desc: Build and Push Docker Images
+    required:
+      vars: [CI_SERVICE_IMAGE_REPOSITORY_URL]
+    cmds:
+      - echo "◈ Building Docker Image and pushing to the registry..."
+      - |
+        bash -c "source ./docker/scripts/cicd-entrypoint.sh && ./docker/scripts/docker-build.sh --push"
+  
+  service:get-metadata:
+    desc: Get Service Metadata
+    cmds:
+      - ./docker/scripts/get-service-metadata.sh

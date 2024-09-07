@@ -1,0 +1,14 @@
+/node_modules
+npm-debug.log
+.env
+NOTES.md
+
+/.idea
+
+/vendor/
+*.local.php
+.nvmrc
+
+.DS_Store
+
+.vscode
