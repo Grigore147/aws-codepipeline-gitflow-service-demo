@@ -23,6 +23,8 @@ tasks:
         print_info "docker:build          - Build Docker Image"
         print_info "docker:build-push     - Build and Push Docker Images"
         print_info "service:get-metadata  - Get Service Metadata for current environment (JSON)"
+        print_info "service:run           - Run the service locally using Docker"
+        print_info "service:run-build     - Build image for current branch and run the service locally using Docker"
 
   docker:login:
     desc: Logging in to Docker Hub
@@ -39,7 +41,6 @@ tasks:
     cmds:
       - echo "◈ Logging in to Amazon ECR"
       - |
-        env \
         aws ecr get-login-password --region $AWS_ECR_REGION | \
         docker login --username AWS --password-stdin $AWS_ECR_ACCOUNT_ID.dkr.ecr.$AWS_ECR_REGION.amazonaws.com
 
@@ -74,3 +75,19 @@ tasks:
     desc: Get Service Metadata
     cmds:
       - ./docker/scripts/get-service-metadata.sh
+
+  service:run:
+    desc: Run the service locally
+    description: Run the service locally using Docker
+    cmds:
+      - |
+        SERVICE_IMAGE=$(./docker/scripts/cicd-entrypoint.sh | grep -E 'SERVICE\ IMAGE:' | awk -F': +' '{print $2}')
+
+        docker run --rm --name demo-app -p 8000:8000 $SERVICE_IMAGE
+  
+  service:run-build:
+    desc: Build image and run the service locally
+    description: Build image for current branch and run the service locally using Docker
+    cmds:
+      - task: docker:build
+      - task: service:run
